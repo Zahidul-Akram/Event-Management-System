@@ -1,4 +1,4 @@
-import { CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { EventTable } from "./event-table.entity";
 import { AttendeeTable } from "./attendee-table.entity";
 
@@ -8,10 +8,12 @@ export class RegistrationTable {
     id: string;
   
     @ManyToOne(() => EventTable, (event) => event.id, { nullable: false, onDelete: 'CASCADE' })
-    event_id: EventTable;
-  
+    @JoinColumn({ name: 'event_id' })
+    event: EventTable;
+
     @ManyToOne(() => AttendeeTable, (attendee) => attendee.id, { nullable: false, onDelete: 'CASCADE' })
-    attendee_id: AttendeeTable;
+    @JoinColumn({ name: 'attendee_id' })
+    attendee: AttendeeTable;
   
     @CreateDateColumn({ name: 'registered_at' })
     'registered_at': Date;
