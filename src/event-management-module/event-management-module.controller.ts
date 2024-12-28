@@ -29,6 +29,11 @@ export class EventManagementModuleController {
     return this.eventManagementService.getAllEvents(date || '');
   }
 
+  @Get('eventReminder')
+  eventReminder() {
+    return this.eventManagementService.eventReminder();
+  }
+
   @Get('getOneEventDetails/:eventId')
   getOneEventDetails(@Param('eventId') eventId: string) {
     return this.eventManagementService.getOneEventDetails(eventId);
