@@ -10,6 +10,10 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { CreateAttendeeDto } from "./dto/create-attendee.dto";
 import { RegisterAttendeeDto } from "./dto/register-attendee.dto";
+import { Queue } from "bull";
+import { InjectQueue } from "@nestjs/bull";
+import * as nodemailer from 'nodemailer';
+
 
 
 @Injectable()
@@ -22,7 +26,8 @@ export class RegistrationManagementService {
     private readonly attendeeTableRepository: Repository<AttendeeTable>,
     @InjectRepository(RegistrationTable)
     private readonly registrationTableRepository: Repository<RegistrationTable>,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @InjectQueue('emailQueue') private emailQueue: Queue
   ) { }
 
   async registerAttendee(registerAttendeeDto: RegisterAttendeeDto) {
@@ -65,7 +70,11 @@ export class RegistrationManagementService {
     registrationTable.attendee = attendeeDetails;
   
     try {
-      return await this.registrationTableRepository.save(registrationTable);
+      const newRegistration =  await this.registrationTableRepository.save(registrationTable);
+
+      await this.addEmailJob(attendeeDetails.email, eventDetails.name);
+
+      return newRegistration;
     } catch (error) {
       throw new HttpException(
         'Failed to register an attendee!',
@@ -100,5 +109,32 @@ export class RegistrationManagementService {
 
     await this.cacheManager.set(cacheKey, res, 6000); 
     return res;
+  }
+
+  async sendConfirmationEmail(attendeeEmail: string, eventName: string) {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: attendeeEmail,
+      subject: `Registration Confirmation for ${eventName}`,
+      text: `Dear Attendee, \n\nYou have successfully registered for the event: ${eventName}. \n\nThank you!`,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Error sending email:', error);
+    }
+  }
+
+  async addEmailJob(attendeeEmail: string, eventName: string) {
+    await this.emailQueue.add('sendConfirmationEmail', { attendeeEmail, eventName });
   }
 }

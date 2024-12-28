@@ -7,14 +7,23 @@ import { RegistrationTable } from './entities/registration-table.entity';
 import { EventManagementService } from './event-management.service';
 import { AttendeeManagementService } from './attendee-management.service';
 import { RegistrationManagementService } from './registration-management.service';
+import { BullModule } from '@nestjs/bull';
+import { EmailController } from './email.controller';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([EventTable]),
     TypeOrmModule.forFeature([AttendeeTable]),
-    TypeOrmModule.forFeature([RegistrationTable])
+    TypeOrmModule.forFeature([RegistrationTable]),
+    BullModule.registerQueue({
+      name: 'emailQueue',
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
   ],
-  controllers: [EventManagementModuleController],
-  providers: [ EventManagementService, AttendeeManagementService, RegistrationManagementService],
+  controllers: [EventManagementModuleController, EmailController],
+  providers: [EventManagementService, AttendeeManagementService, RegistrationManagementService],
 })
 export class EventManagementModuleModule {}
