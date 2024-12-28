@@ -194,63 +194,84 @@ export class EventManagementService {
     console.log('Reminding For events...', eventIds);
 
     if (eventIds.length === 0) {
-        console.log('No events found for reminders.');
-        return [];
+      console.log('No events found for reminders.');
+      return [];
     }
 
     const registrations = await this.registrationTableRepository.find({
-        where: {
-            event: { id: In(eventIds) },
-        },
-        relations: ['attendee'],
+      where: {
+        event: { id: In(eventIds) },
+      },
+      relations: ['attendee'],
     });
 
     const attendeeList = registrations.map((registration) => registration.attendee);
 
     if (attendeeList.length === 0) {
-        console.log('No attendees to send reminders.');
-        return [];
+      console.log('No attendees to send reminders.');
+      return [];
     }
 
     console.log(`Sending reminders to ${attendeeList.length} attendees...`);
 
     const emailPromises = attendeeList.map(async (attendee) => {
-        try {
-            await this.reminderEmail(attendee.email);
-            console.log(`Reminder email sent to: ${attendee.email}`);
-        } catch (error) {
-            console.error(`Failed to send email to: ${attendee.email}, Error: ${error.message}`);
-        }
+      try {
+        await this.reminderEmail(attendee.email);
+        console.log(`Reminder email sent to: ${attendee.email}`);
+      } catch (error) {
+        console.error(`Failed to send email to: ${attendee.email}, Error: ${error.message}`);
+      }
     });
 
     await Promise.all(emailPromises);
     console.log('All reminders processed.');
-}
+  }
+
+  async eventWithMaxReg(){
+    const event = await this.registrationTableRepository.query(
+      `
+      SELECT 
+      COUNT(r.id) AS "registration_count",
+      e.*
+      FROM 
+          "event_table" e
+      LEFT JOIN 
+          "registration_table" r ON e.id = r.event_id
+      GROUP BY 
+          e.id
+      ORDER BY 
+          "registration_count" DESC
+      LIMIT 1;
+      `
+    );
+
+    return event;
+  }
 
   async sendEventReminderEmail(attendeeEmail: string) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-  
-      const mailOptions = {
-        from: process.env.EMAIL,
-        to: attendeeEmail,
-        subject: `Reminder for a Registered Event`,
-        text: `Dear Attendee,\n\nThe event, that you registered, will start in 24hrs.\n\nStay Tuned!`,
-      };
-  
-      try {
-        await transporter.sendMail(mailOptions);
-      } catch (error) {
-        console.error('Error sending email:', error);
-      }
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: attendeeEmail,
+      subject: `Reminder for a Registered Event`,
+      text: `Dear Attendee,\n\nThe event, that you registered, will start in 24hrs.\n\nStay Tuned!`,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Error sending email:', error);
     }
-  
-    async reminderEmail(attendeeEmail: string) {
-      await this.emailQueue.add('sendEventReminderEmail', { attendeeEmail });
-    }
+  }
+
+  async reminderEmail(attendeeEmail: string) {
+    await this.emailQueue.add('sendEventReminderEmail', { attendeeEmail });
+  }
 }

@@ -49,6 +49,11 @@ export class EventManagementModuleController {
     return this.eventManagementService.deleteEvent(eventId);
   }
 
+  @Get('eventWithMaxReg') // For Raw Query
+  eventWithMaxReg() {
+    return this.eventManagementService.eventWithMaxReg();
+  }
+
   // Attendee Management Endpoints
   @Post('createAttendee')
   createAttendee(@Body() createAttendeeDto: CreateAttendeeDto) {
@@ -64,6 +69,11 @@ export class EventManagementModuleController {
   @ApiQuery({ name: 'searchWord', required: false, type: String }) // search with name or email
   getAllAttendees(@Query('searchWord') searchWord: string) {
     return this.attendeeManagementService.getAllAttendees(searchWord || '');
+  }
+
+  @Get('attendeeWithMultipleEvents') // For Raw Query
+  attendeeWithMultipleEvents() {
+    return this.attendeeManagementService.attendeeWithMultipleEvents();
   }
 
   // Registration Management EndPoints
